@@ -663,7 +663,7 @@
 <body>
   <canvas id="gameCanvas" tabindex="0" aria-label="Starforge arena. Move with WASD or arrows; aim and fire with the pointer."></canvas>
 
-  <div class="top-bar">
+  <div class="top-bar" id="statusBar">
     <div class="stats">
       <div class="stat"><strong>CORE</strong><span id="coreValue">100</span></div>
       <div class="stat"><strong>HULL</strong><span id="hullValue">100</span></div>
@@ -773,7 +773,8 @@
             <button class="button" id="startButton" type="button">Start Mission</button>
             <button class="button secondary" id="howButton" type="button">Toggle Tips</button>
           </div>
-          <p>Touch: drag MOVE with one thumb and hold the arena to aim/fire with the other. Tap Build to preview and place a defense. Dash and Pause are on screen.</p>
+          <p id="touchInstructions" hidden>Touch: drag MOVE with one thumb and hold the arena to aim/fire with the other. Tap Build to preview and place a defense. Dash and Pause are on screen.</p>
+          <p id="desktopInstructions">Move with WASD/arrows, aim with the mouse, and fire with the mouse/Space. Shift dashes, P pauses; choose 1/2/3 then right-click to build.</p>
         </div>
         <div class="menu-radar" aria-hidden="true">
           <span class="radar-sweep"></span>
@@ -860,6 +861,7 @@
     const upgradeGrid = document.getElementById("upgradeGrid");
     const finalStats = document.getElementById("finalStats");
     const toast = document.getElementById("toast");
+    const statusBar = document.getElementById("statusBar");
     const tipsPanel = document.getElementById("tipsPanel");
     const autoFireCheckbox = document.getElementById("autoFireCheckbox");
     const movePad = document.getElementById("movePad");
@@ -2792,7 +2794,12 @@
 
     function updateTouchLayout() {
       const compact = window.matchMedia("(max-width: 840px), (pointer: coarse)").matches;
-      document.body.classList.toggle("touch-layout", compact || input.touchUsed);
+      const touchLayout = compact || input.touchUsed;
+      document.body.classList.toggle("touch-layout", touchLayout);
+      document.getElementById("touchInstructions").hidden = !touchLayout;
+      document.getElementById("desktopInstructions").hidden = touchLayout;
+      // Portrait HUDs wrap into two rows. Keep notices below the actual tool row.
+      toast.style.top = touchLayout ? statusBar.getBoundingClientRect().bottom + 8 + "px" : "";
     }
 
     function rememberPointer(event) {

@@ -78,7 +78,7 @@ export function loadGame(width = 390, height = 844) {
     querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
     getBoundingClientRect() {
       if (this.id === 'movePad') return { left: 16, top: window.innerHeight - 144, width: 112, height: 112 };
-      return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+      return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight, bottom: window.innerHeight };
     }
     setPointerCapture(id) { this.captures.add(id); }
     hasPointerCapture(id) { return this.captures.has(id); }

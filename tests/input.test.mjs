@@ -272,3 +272,21 @@ test('actual render and simulation functions run through every game state', () =
   g.element('upgradeGrid').children[0].click();
   g.run('endGame(); renderGame()');
 });
+
+test('touch notifications are positioned below the measured HUD instead of covering tools', () => {
+  const g = loadGame();
+  const header = g.element('statusBar');
+  assert.ok(header, 'the HUD must be measurable for notification placement');
+  header.getBoundingClientRect = () => ({ bottom: 146 });
+  g.run('updateTouchLayout()');
+  assert.equal(g.element('toast').style.top, '154px');
+});
+
+test('onboarding describes the controls actually shown for each input layout', () => {
+  for (const [width, touch] of [[390, true], [1280, false]]) {
+    const g = loadGame(width, 844);
+    assert.ok(g.element('desktopInstructions'), 'desktop instructions must be provided');
+    assert.equal(g.element('desktopInstructions').hidden, touch);
+    assert.equal(g.element('touchInstructions').hidden, !touch);
+  }
+});

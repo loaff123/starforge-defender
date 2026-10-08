@@ -6,6 +6,21 @@ const test = base.extend({
     page.on('pageerror', error => errors.push(error.message));
     await use(errors);
     expect(errors).toEqual([]);
+  }, { auto: true }],
+  pointerEvidence: [async ({ page }, use, testInfo) => {
+    await page.addInitScript(() => {
+      window.testPointerEvents = [];
+      for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'gotpointercapture', 'lostpointercapture']) {
+        document.addEventListener(type, event => {
+          window.testPointerEvents.push({ type, id: event.pointerId, target: event.target.id });
+        }, true);
+      }
+    });
+    await use();
+    await testInfo.attach('native-pointer-events', {
+      body: JSON.stringify(await page.evaluate(() => window.testPointerEvents || []), null, 2),
+      contentType: 'application/json'
+    });
   }, { auto: true }]
 });
 
@@ -28,6 +43,9 @@ async function screenshot(page, testInfo, name) {
 }
 
 test('start, pause, upgrade and restart own focus and remain reachable', async ({ page }, testInfo) => {
+  const touchLayout = testInfo.project.name !== 'desktop';
+  await expect(page.locator(touchLayout ? '#touchInstructions' : '#desktopInstructions')).toBeVisible();
+  await expect(page.locator(touchLayout ? '#desktopInstructions' : '#touchInstructions')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Start Mission', exact: true })).toBeFocused();
   await page.getByRole('button', { name: 'Toggle Tips' }).focus();
   await page.keyboard.press('Tab');
@@ -83,14 +101,15 @@ test('native touch pointers move and aim together, then cancel cleanly', async (
   expect(await page.evaluate(() => bullets.length)).toBeGreaterThan(0);
   expect(await page.evaluate(() => input.movePointer !== input.aimPointer && mouse.isDown)).toBe(true);
   await screenshot(page, testInfo, 'two-finger-combat');
-  // The touch list is the active set: omitting the aim finger releases only it.
-  await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...left, x: left.x + 35 }] });
+  // This Chromium driver releases the specifically named point on touchEnd.
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [right] });
   expect(await page.evaluate(() => input.aimPointer === null && input.movePointer !== null)).toBe(true);
   const dash = await page.locator('#dashButton').boundingBox();
   const dashFinger = { id: 3, x: dash.x + dash.width / 2, y: dash.y + dash.height / 2 };
-  await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...left, x: left.x + 35 }, dashFinger] });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [dashFinger] });
   await page.clock.runFor(32);
   expect(await page.evaluate(() => player.dashCooldown)).toBeGreaterThan(0);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [dashFinger] });
   // Move well outside the pad; pointer capture must still own and then release it.
   await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...left, x: 5, y: 160 }] });
   expect(await page.evaluate(() => input.movePointer !== null)).toBe(true);
@@ -134,6 +153,9 @@ test('touch controls fit the viewport without overlapping each other', async ({ 
   test.skip(testInfo.project.name === 'desktop', 'Desktop controls use the keyboard.');
   await start(page);
   await page.getByRole('button', { name: 'Build', exact: true }).tap();
+  const hud = await page.locator('.top-bar').boundingBox();
+  const notification = await page.locator('#toast').boundingBox();
+  expect(notification.y).toBeGreaterThanOrEqual(hud.y + hud.height + 8);
   const rectangles = await page.locator('.touch-controls button, #movePad').evaluateAll(elements =>
     elements.map(element => {
       const r = element.getBoundingClientRect();
@@ -177,9 +199,14 @@ test('actual lost capture clears held fire', async ({ page }) => {
   await page.mouse.move(100, 250);
   await page.mouse.down();
   expect(await page.evaluate(() => mouse.isDown)).toBe(true);
+  // setPointerCapture is pending until the next pointer event. Establish actual
+  // capture first, so release tests a real loss rather than canceling a pending grant.
+  await page.mouse.move(110, 250);
+  expect(await page.evaluate(() => window.testPointerEvents.some(event => event.type === 'gotpointercapture'))).toBe(true);
   // Releasing the browser's real capture generates lostpointercapture on the next input.
   await page.evaluate(() => canvas.releasePointerCapture(input.aimPointer));
   await page.mouse.move(120, 250);
+  expect(await page.evaluate(() => window.testPointerEvents.some(event => event.type === 'lostpointercapture'))).toBe(true);
   expect(await page.evaluate(() => mouse.isDown)).toBe(false);
   expect(await page.evaluate(() => input.aimPointer)).toBe(null);
   await page.mouse.up();
@@ -198,4 +225,23 @@ test('a size change pauses rather than running with held inputs', async ({ page 
   await page.clock.runFor(1000);
   expect(await page.evaluate(() => game.time)).toBe(time);
   await page.keyboard.up('d'); await page.mouse.up();
+});
+
+test('touch menu swipes reach instructions and return to the title', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'desktop', 'Native touch scrolling case.');
+  const client = await page.context().newCDPSession(page);
+  const viewport = page.viewportSize();
+  const scroll = distance => client.send('Input.synthesizeScrollGesture', {
+    x: viewport.width / 2, y: viewport.height / 2, yDistance: distance,
+    speed: 1200, preventFling: true, gestureSourceType: 'touch'
+  });
+  const title = page.getByRole('heading', { name: 'Starforge Defender', exact: true });
+  await scroll(1000);
+  await expect(title).toBeInViewport({ ratio: 1 });
+  await scroll(-1000);
+  await expect(page.locator('#touchInstructions')).toBeInViewport({ ratio: 1 });
+  await screenshot(page, testInfo, 'touch-menu-scrolled');
+  await scroll(1000);
+  await expect(title).toBeInViewport({ ratio: 1 });
+  await client.detach();
 });
