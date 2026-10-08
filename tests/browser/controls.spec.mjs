@@ -10,10 +10,14 @@ const test = base.extend({
   pointerEvidence: [async ({ page }, use, testInfo) => {
     await page.addInitScript(() => {
       window.testPointerEvents = [];
-      for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'gotpointercapture', 'lostpointercapture']) {
+      for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'gotpointercapture', 'lostpointercapture', 'touchstart', 'touchmove', 'touchend', 'touchcancel']) {
         document.addEventListener(type, event => {
-          window.testPointerEvents.push({ type, id: event.pointerId, target: event.target.id });
-        }, true);
+          const point = event.touches?.[0] || event.changedTouches?.[0] || event;
+          window.testPointerEvents.push({ type, id: event.pointerId, target: event.target.id,
+            tag: event.target.tagName, x: point.clientX, y: point.clientY,
+            pointerType: event.pointerType, isTrusted: event.isTrusted,
+            cancelable: event.cancelable, defaultPrevented: event.defaultPrevented });
+        }, { capture: true, passive: true });
       }
     });
     await use();
@@ -238,26 +242,43 @@ test('touch menu swipes reach instructions and return to the title', async ({ pa
   const viewport = page.viewportSize();
   const scroll = async distance => {
     const before = await page.locator('#startOverlay .menu-card').evaluate(element => ({
-      scrollTop: element.scrollTop, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight
+      scrollTop: element.scrollTop, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight,
+      overlayScroll: element.parentElement.scrollTop, documentScroll: document.scrollingElement.scrollTop
     }));
-    await client.send('Input.synthesizeScrollGesture', {
-      x: viewport.width / 2, y: viewport.height / 2, yDistance: distance,
-      speed: 1200, preventFling: true, gestureSourceType: 'touch'
-    });
+    const travel = Math.min(240, viewport.height * 0.45);
+    const direction = Math.sign(distance);
+    const startY = viewport.height / 2 - direction * travel / 2;
+    for (let swipe = 0; swipe < Math.ceil(Math.abs(distance) / travel); swipe++) {
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchStart', touchPoints: [{ id: 1, x: viewport.width / 2, y: startY }]
+      });
+      for (let step = 1; step <= 10; step++) {
+        await client.send('Input.dispatchTouchEvent', {
+          type: 'touchMove', touchPoints: [{ id: 1, x: viewport.width / 2, y: startY + direction * travel * step / 10 }]
+        });
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+      }
+      await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    }
     const after = await page.locator('#startOverlay .menu-card').evaluate(element => ({
-      scrollTop: element.scrollTop, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight
+      scrollTop: element.scrollTop, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight,
+      overlayScroll: element.parentElement.scrollTop, documentScroll: document.scrollingElement.scrollTop
     }));
     await testInfo.attach(`scroll-${distance}`, {
       body: JSON.stringify({ before, after }), contentType: 'application/json'
     });
+    if (distance < 0 && before.scrollTop < before.scrollHeight - before.clientHeight) {
+      expect(after.scrollTop).toBeGreaterThan(before.scrollTop);
+    } else if (distance > 0 && before.scrollTop > 0) {
+      expect(after.scrollTop).toBeLessThan(before.scrollTop);
+    }
   };
   const title = page.getByRole('heading', { name: 'Starforge Defender', exact: true });
-  await scroll(1000);
-  await expect(title).toBeInViewport({ ratio: 1 });
   await scroll(-1000);
   await expect(page.locator('#touchInstructions')).toBeInViewport({ ratio: 1 });
   await testInfo.attach('touch-menu-scrolled', { body: await page.screenshot(), contentType: 'image/png' });
   await scroll(1000);
   await expect(title).toBeInViewport({ ratio: 1 });
+  await testInfo.attach('touch-menu-top', { body: await page.screenshot(), contentType: 'image/png' });
   await client.detach();
 });
