@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Codex Starforge Defender</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23061018'/%3E%3Cpath d='M50 32 20 18l6 14-6 14z' fill='%2353d8ff'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23edf6ff'/%3E%3C/svg%3E" />
   <style>
@@ -39,6 +39,7 @@
       display: block;
       width: 100vw;
       height: 100vh;
+      touch-action: none;
       background:
         radial-gradient(circle at 20% 18%, rgba(65, 132, 180, 0.20), transparent 30%),
         radial-gradient(circle at 78% 28%, rgba(145, 78, 170, 0.14), transparent 32%),
@@ -168,21 +169,84 @@
       color: var(--text);
     }
 
-    .mobile-buttons {
-      display: none;
-      grid-template-columns: repeat(3, 54px);
-      gap: 8px;
-      pointer-events: auto;
-    }
-
     .touch-button {
-      height: 54px;
+      min-height: 48px;
+      min-width: 64px;
+      padding: 8px 12px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--panel-strong);
       color: var(--text);
-      font-size: 18px;
+      font-size: 14px;
       font-weight: 900;
+      touch-action: manipulation;
+    }
+
+    .touch-controls { display: none; }
+    .touch-layout[data-state="playing"] .touch-controls {
+      display: flex;
+      position: fixed;
+      left: max(16px, env(safe-area-inset-left));
+      right: max(16px, env(safe-area-inset-right));
+      bottom: max(16px, env(safe-area-inset-bottom));
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      pointer-events: none;
+    }
+    .move-pad {
+      position: relative;
+      flex: 0 0 112px;
+      height: 112px;
+      border: 2px solid rgba(83, 216, 255, 0.5);
+      border-radius: 50%;
+      background: rgba(10, 18, 28, 0.65);
+      pointer-events: auto;
+      touch-action: none;
+    }
+    .move-pad span {
+      position: absolute;
+      inset: 34px;
+      border-radius: 50%;
+      background: rgba(83, 216, 255, 0.55);
+      transform: translate(var(--move-x, 0px), var(--move-y, 0px));
+      pointer-events: none;
+    }
+    .move-pad small {
+      position: absolute;
+      bottom: 6px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-weight: 700;
+      color: var(--text);
+      pointer-events: none;
+    }
+    .touch-actions { display: grid; gap: 8px; pointer-events: auto; }
+    .touch-row { display: flex; justify-content: flex-end; gap: 8px; }
+    .touch-button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+    .touch-button:disabled { opacity: 0.55; }
+    [hidden] { display: none !important; }
+    .build-status { max-width: 220px; margin: 0; text-align: right; font-size: 12px; color: var(--text); }
+    .touch-layout .hint-panel { display: none; }
+    .touch-layout .top-bar {
+      top: max(8px, env(safe-area-inset-top));
+      left: max(8px, env(safe-area-inset-left));
+      right: max(8px, env(safe-area-inset-right));
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+    .touch-layout .stats { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+    .touch-layout .stat { min-width: 0; padding: 5px 7px; }
+    .touch-layout .stat strong { font-size: 10px; }
+    .touch-layout .stat span { font-size: 14px; margin-top: 1px; }
+    .touch-layout .toolbox { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 480px; }
+    .touch-layout .tool { min-width: 0; padding: 6px; gap: 6px; min-height: 48px; touch-action: manipulation; }
+    .touch-layout .tool-title { font-size: 12px; }
+    .touch-layout .tool-cost { display: block; font-size: 10px; }
+    .touch-layout .tool-icon { width: 24px; height: 24px; }
+    @media (max-width: 520px) {
+      .touch-layout .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
 
     .overlay {
@@ -195,6 +259,8 @@
         radial-gradient(circle at 50% 40%, rgba(83, 216, 255, 0.16), transparent 30%),
         rgba(3, 8, 12, 0.72);
       backdrop-filter: blur(12px);
+      overflow: auto;
+      z-index: 2;
     }
 
     .overlay.hidden {
@@ -207,7 +273,10 @@
       border-radius: 10px;
       background: rgba(8, 14, 22, 0.88);
       box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
-      overflow: hidden;
+      max-height: 100%;
+      overflow: auto;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
     }
 
     .menu-hero {
@@ -556,17 +625,13 @@
         display: none;
       }
 
-      .mobile-buttons {
-        display: grid;
-      }
-
       .menu-hero {
         grid-template-columns: 1fr;
         padding: 24px;
       }
 
       .menu-radar {
-        height: 190px;
+        display: none;
       }
 
       .difficulty-row {
@@ -586,10 +651,17 @@
         grid-template-columns: 1fr;
       }
     }
+    @media (max-height: 500px) {
+      .overlay { padding: 8px; }
+      .menu-hero { min-height: 0; padding: 18px; grid-template-columns: 1fr; }
+      .menu-radar { display: none; }
+      .difficulty-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .menu-copy h1 { font-size: 34px; }
+    }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
+  <canvas id="gameCanvas" tabindex="0" aria-label="Starforge arena. Move with WASD or arrows; aim and fire with the pointer."></canvas>
 
   <div class="top-bar">
     <div class="stats">
@@ -638,16 +710,31 @@
       <b>Dash:</b> Shift&nbsp;&nbsp;
       <b>Pause:</b> P
     </div>
-    <div class="mobile-buttons" aria-label="Mobile controls">
-      <button class="touch-button" id="mobileTurret" type="button">1</button>
-      <button class="touch-button" id="mobileWall" type="button">2</button>
-      <button class="touch-button" id="mobileMine" type="button">3</button>
+  </div>
+
+  <div class="touch-controls" aria-label="Touch controls">
+    <div class="move-pad" id="movePad" aria-label="Movement pad: drag to move">
+      <span aria-hidden="true"></span><small>MOVE</small>
+    </div>
+    <div class="touch-actions">
+      <p class="build-status" id="buildStatus" role="status" hidden></p>
+      <div class="touch-row" id="placementActions" hidden>
+        <button class="touch-button" id="placeButton" type="button" disabled>Place</button>
+        <button class="touch-button" id="cancelBuildButton" type="button">Cancel</button>
+      </div>
+      <div class="touch-row">
+        <button class="touch-button" id="buildButton" type="button" aria-pressed="false">Build</button>
+        <button class="touch-button" id="pauseButton" type="button">Pause</button>
+      </div>
+      <div class="touch-row">
+        <button class="touch-button" id="dashButton" type="button">Dash</button>
+      </div>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
 
-  <div class="overlay" id="startOverlay">
+  <div class="overlay" id="startOverlay" role="dialog" aria-modal="true" aria-label="Start mission">
     <div class="menu-card">
       <div class="menu-hero">
         <div class="menu-copy">
@@ -678,7 +765,7 @@
               <input id="autoFireCheckbox" type="checkbox" checked />
               <span>
                 <strong>Auto Fire</strong>
-                <small>Fires toward the mouse. Press F to toggle.</small>
+                <small>Fires toward your last aim point. Press F to toggle.</small>
               </span>
             </label>
           </div>
@@ -686,6 +773,7 @@
             <button class="button" id="startButton" type="button">Start Mission</button>
             <button class="button secondary" id="howButton" type="button">Toggle Tips</button>
           </div>
+          <p>Touch: drag MOVE with one thumb and hold the arena to aim/fire with the other. Tap Build to preview and place a defense. Dash and Pause are on screen.</p>
         </div>
         <div class="menu-radar" aria-hidden="true">
           <span class="radar-sweep"></span>
@@ -712,7 +800,19 @@
     </div>
   </div>
 
-  <div class="overlay hidden" id="upgradeOverlay">
+  <div class="overlay hidden" id="pauseOverlay" role="dialog" aria-modal="true" aria-label="Mission paused">
+    <div class="menu-card">
+      <div class="menu-hero" style="grid-template-columns: 1fr; min-height: 0;">
+        <div class="menu-copy">
+          <h1 style="font-size: 34px;">Mission Paused</h1>
+          <p id="pauseReason">Your mission is paused. Resume when you’re ready.</p>
+          <div class="menu-actions"><button class="button" id="resumeButton" type="button">Resume Mission</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="upgradeOverlay" role="dialog" aria-modal="true" aria-label="Choose an upgrade">
     <div class="menu-card">
       <div class="menu-hero" style="grid-template-columns: 1fr;">
         <div class="menu-copy">
@@ -724,7 +824,7 @@
     </div>
   </div>
 
-  <div class="overlay hidden" id="gameOverOverlay">
+  <div class="overlay hidden" id="gameOverOverlay" role="dialog" aria-modal="true" aria-label="Mission ended">
     <div class="menu-card">
       <div class="menu-hero" style="grid-template-columns: 1fr;">
         <div class="menu-copy">
@@ -756,11 +856,18 @@
     const startOverlay = document.getElementById("startOverlay");
     const upgradeOverlay = document.getElementById("upgradeOverlay");
     const gameOverOverlay = document.getElementById("gameOverOverlay");
+    const pauseOverlay = document.getElementById("pauseOverlay");
     const upgradeGrid = document.getElementById("upgradeGrid");
     const finalStats = document.getElementById("finalStats");
     const toast = document.getElementById("toast");
     const tipsPanel = document.getElementById("tipsPanel");
     const autoFireCheckbox = document.getElementById("autoFireCheckbox");
+    const movePad = document.getElementById("movePad");
+    const buildButton = document.getElementById("buildButton");
+    const placeButton = document.getElementById("placeButton");
+    const buildStatus = document.getElementById("buildStatus");
+    const placementActions = document.getElementById("placementActions");
+    const dashButton = document.getElementById("dashButton");
 
     const toolButtons = Array.from(document.querySelectorAll(".tool"));
     const difficultyButtons = Array.from(document.querySelectorAll(".choice-button[data-difficulty]"));
@@ -786,6 +893,19 @@
       right: false,
       shoot: false,
       dash: false
+    };
+
+    // A pointer belongs to exactly one action until it is released or canceled.
+    const input = {
+      movePointer: null,
+      aimPointer: null,
+      moveX: 0,
+      moveY: 0,
+      dashRequested: false,
+      buildMode: false,
+      buildPoint: null,
+      touchUsed: false,
+      lastPointerType: "mouse"
     };
 
     const difficulties = {
@@ -837,7 +957,8 @@
       screenShake: 0,
       time: 0,
       enemiesKilledThisWave: 0,
-      waveTargetKills: 0
+      waveTargetKills: 0,
+      resizeNotice: null
     };
 
     const player = {
@@ -967,9 +1088,19 @@
     ];
 
     function resizeCanvas() {
+      const nextWidth = Math.floor(window.innerWidth);
+      const nextHeight = Math.floor(window.innerHeight);
+      if (canvasWidth > 0 && (nextWidth !== canvasWidth || nextHeight !== canvasHeight)) {
+        const notice = "Screen size changed. Defenses keep their old positions. Restore the previous orientation before resuming, or reload to start in this orientation.";
+        if (game.state === "upgrade") game.resizeNotice = notice;
+        interruptGame(notice);
+      } else {
+        resetInput();
+      }
+      updateTouchLayout();
       deviceScale = Math.min(window.devicePixelRatio || 1, 2);
-      canvasWidth = Math.floor(window.innerWidth);
-      canvasHeight = Math.floor(window.innerHeight);
+      canvasWidth = nextWidth;
+      canvasHeight = nextHeight;
       canvas.width = Math.floor(canvasWidth * deviceScale);
       canvas.height = Math.floor(canvasHeight * deviceScale);
       canvas.style.width = canvasWidth + "px";
@@ -1013,6 +1144,7 @@
       game.screenShake = 0;
       game.enemiesKilledThisWave = 0;
       game.waveTargetKills = 0;
+      game.resizeNotice = null;
 
       player.x = core.x;
       player.y = core.y + 135;
@@ -1042,6 +1174,10 @@
       startOverlay.classList.add("hidden");
       upgradeOverlay.classList.add("hidden");
       gameOverOverlay.classList.add("hidden");
+      pauseOverlay.classList.add("hidden");
+      resetInput();
+      syncGameState();
+      canvas.focus();
       selectTool("turret");
       spawnWave();
       updateUi();
@@ -1174,7 +1310,9 @@
       for (const button of toolButtons) {
         const buttonTool = button.getAttribute("data-tool");
         button.classList.toggle("active", buttonTool === toolName);
+        button.setAttribute("aria-pressed", String(buttonTool === toolName));
       }
+      updatePlacementUi();
     }
 
     function selectDifficulty(difficultyName) {
@@ -1237,8 +1375,8 @@
     }
 
     function updatePlayer(deltaTime) {
-      let moveX = 0;
-      let moveY = 0;
+      let moveX = input.moveX;
+      let moveY = input.moveY;
 
       if (keys.left) {
         moveX -= 1;
@@ -1255,17 +1393,18 @@
 
       const moveLength = Math.hypot(moveX, moveY);
 
-      if (moveLength > 0) {
+      if (moveLength > 1) {
         moveX /= moveLength;
         moveY /= moveLength;
       }
 
-      if (keys.dash && player.dashCooldown <= 0 && moveLength > 0) {
+      if ((keys.dash || input.dashRequested) && player.dashCooldown <= 0 && moveLength > 0) {
         player.dashTime = 0.14;
         player.dashCooldown = 1.2;
         makeBurst(player.x, player.y, "#53d8ff", 16);
         playTone(260, 0.05, "triangle", 0.07);
       }
+      input.dashRequested = false;
 
       const dashMultiplier = player.dashTime > 0 ? 3.1 : 1;
       player.x += moveX * player.speed * dashMultiplier * deltaTime;
@@ -1276,7 +1415,7 @@
       const aimPoint = getPlayerAimPoint();
       player.aimAngle = Math.atan2(aimPoint.y - player.y, aimPoint.x - player.x);
 
-      if ((mouse.isDown || keys.shoot || shouldAutoFireAtMouse()) && player.reloadLeft <= 0) {
+      if (!input.buildMode && (mouse.isDown || keys.shoot || shouldAutoFireAtMouse()) && player.reloadLeft <= 0) {
         firePlayerWeapon();
       }
     }
@@ -1736,6 +1875,7 @@
 
     function openUpgradeScreen() {
       game.state = "upgrade";
+      resetInput();
       giveWaveClearBonus();
       updateUi();
       const choices = pickUpgrades(3);
@@ -1753,6 +1893,8 @@
       });
 
       upgradeOverlay.classList.remove("hidden");
+      syncGameState();
+      upgradeGrid.children[0].focus();
       showToast("Choose an upgrade to continue.");
     }
 
@@ -1783,14 +1925,24 @@
     }
 
     function chooseUpgrade(upgrade) {
+      if (game.state !== "upgrade") {
+        return;
+      }
       upgrade.apply();
       game.wave += 1;
       game.nextWaveTimer = 0;
       game.state = "playing";
       upgradeOverlay.classList.add("hidden");
+      resetInput();
+      syncGameState();
+      canvas.focus();
       spawnWave();
       updateUi();
       showToast(upgrade.title + " installed. Wave " + game.wave + " incoming.");
+      if (game.resizeNotice) {
+        togglePause(game.resizeNotice);
+        game.resizeNotice = null;
+      }
     }
 
     function buildStructure(x, y) {
@@ -1863,6 +2015,9 @@
     }
 
     function canBuildAt(x, y) {
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x < 30 || y < 30 || x > canvasWidth - 30 || y > canvasHeight - 30) {
+        return false;
+      }
       const distanceToCore = getDistance(x, y, core.x, core.y);
 
       if (distanceToCore < core.radius + 34) {
@@ -1888,10 +2043,13 @@
 
     function endGame() {
       game.state = "gameOver";
+      resetInput();
       game.highScore = Math.max(game.highScore, game.score);
       localStorage.setItem("starforgeHighScore", String(game.highScore));
       finalStats.textContent = getDifficulty().label + " mission. Wave " + game.wave + " reached. Score " + Math.round(game.score) + ". High score " + Math.round(game.highScore) + ".";
       gameOverOverlay.classList.remove("hidden");
+      syncGameState();
+      document.getElementById("restartButton").focus();
       playTone(70, 0.18, "sawtooth", 0.05);
     }
 
@@ -2040,13 +2198,14 @@
     }
 
     function drawBuildPreview() {
-      if (game.state !== "playing" || !mouse.hasMoved) {
+      const point = input.buildMode ? input.buildPoint : mouse;
+      if (game.state !== "playing" || !point || (!input.buildMode && (!mouse.hasMoved || input.lastPointerType !== "mouse"))) {
         return;
       }
 
       const cost = buildCosts[game.selectedTool];
       const canAfford = game.energy >= cost;
-      const allowed = canBuildAt(mouse.x, mouse.y) && canAfford;
+      const allowed = canBuildAt(point.x, point.y) && canAfford;
       const color = allowed ? "rgba(124, 245, 155, 0.8)" : "rgba(255, 93, 115, 0.75)";
       let radius = 20;
 
@@ -2064,21 +2223,21 @@
       context.fillStyle = allowed ? "rgba(124, 245, 155, 0.08)" : "rgba(255, 93, 115, 0.08)";
       context.lineWidth = 2;
       context.beginPath();
-      context.arc(mouse.x, mouse.y, radius, 0, Math.PI * 2);
+      context.arc(point.x, point.y, radius, 0, Math.PI * 2);
       context.fill();
       context.stroke();
 
       if (game.selectedTool === "turret") {
         context.strokeStyle = "rgba(83, 216, 255, 0.16)";
         context.beginPath();
-        context.arc(mouse.x, mouse.y, 260, 0, Math.PI * 2);
+        context.arc(point.x, point.y, 260, 0, Math.PI * 2);
         context.stroke();
       }
 
       if (game.selectedTool === "mine") {
         context.strokeStyle = "rgba(255, 209, 102, 0.18)";
         context.beginPath();
-        context.arc(mouse.x, mouse.y, 125, 0, Math.PI * 2);
+        context.arc(point.x, point.y, 125, 0, Math.PI * 2);
         context.stroke();
       }
 
@@ -2579,6 +2738,9 @@
       setTextIfChanged(autoValue, game.autoFire ? "ON" : "OFF");
       setTextIfChanged(scoreValue, Math.round(game.score));
       setTextIfChanged(bestValue, Math.round(bestScore));
+      dashButton.disabled = game.state !== "playing" || player.dashCooldown > 0;
+      setTextIfChanged(dashButton, player.dashCooldown > 0 ? "Dash " + player.dashCooldown.toFixed(1) + "s" : "Dash");
+      updatePlacementUi();
     }
 
     function setTextIfChanged(element, value) {
@@ -2628,123 +2790,257 @@
       requestAnimationFrame(gameLoop);
     }
 
+    function updateTouchLayout() {
+      const compact = window.matchMedia("(max-width: 840px), (pointer: coarse)").matches;
+      document.body.classList.toggle("touch-layout", compact || input.touchUsed);
+    }
+
+    function rememberPointer(event) {
+      input.lastPointerType = event.pointerType || "mouse";
+      if (input.lastPointerType === "touch") {
+        input.touchUsed = true;
+        updateTouchLayout();
+      }
+    }
+
+    function releaseCapture(element, pointerId) {
+      if (pointerId !== null && element.hasPointerCapture(pointerId)) {
+        element.releasePointerCapture(pointerId);
+      }
+    }
+
+    function resetInput() {
+      const movePointer = input.movePointer;
+      const aimPointer = input.aimPointer;
+      input.movePointer = null;
+      input.aimPointer = null;
+      input.moveX = 0;
+      input.moveY = 0;
+      input.dashRequested = false;
+      input.buildMode = false;
+      input.buildPoint = null;
+      mouse.isDown = false;
+      mouse.hasMoved = false;
+      for (const key of Object.keys(keys)) keys[key] = false;
+      releaseCapture(movePad, movePointer);
+      releaseCapture(canvas, aimPointer);
+      movePad.style.setProperty("--move-x", "0px");
+      movePad.style.setProperty("--move-y", "0px");
+      updatePlacementUi();
+    }
+
+    function getActiveOverlay() {
+      if (game.state === "menu") return startOverlay;
+      if (game.state === "upgrade") return upgradeOverlay;
+      if (game.state === "gameOver") return gameOverOverlay;
+      if (game.state === "paused") return pauseOverlay;
+      return null;
+    }
+
+    function syncGameState() {
+      document.body.setAttribute("data-state", game.state);
+      const inactive = game.state !== "playing";
+      canvas.inert = inactive;
+      for (const element of document.querySelectorAll(".top-bar, .bottom-help, .touch-controls")) {
+        element.inert = inactive;
+      }
+    }
+
+    function updatePlacementUi() {
+      buildButton.setAttribute("aria-pressed", String(input.buildMode));
+      placementActions.hidden = !input.buildMode;
+      buildStatus.hidden = !input.buildMode;
+      const point = input.buildPoint;
+      const cost = buildCosts[game.selectedTool];
+      const affordable = game.energy >= cost;
+      const valid = point && canBuildAt(point.x, point.y);
+      placeButton.disabled = game.state !== "playing" || !input.buildMode || !point || !valid || !affordable;
+      if (input.buildMode) {
+        const message = !point ? "Touch the arena to preview a position." :
+          !affordable ? "Need " + cost + " energy. Choose another tool or Cancel." :
+          !valid ? "Position blocked. Touch another position." :
+          "Place " + game.selectedTool + " for " + cost + " energy.";
+        setTextIfChanged(buildStatus, message);
+      }
+    }
+
+    function toggleBuildMode() {
+      if (game.state !== "playing") return;
+      const nextMode = !input.buildMode;
+      resetInput();
+      input.buildMode = nextMode;
+      updatePlacementUi();
+    }
+
+    function placeSelectedStructure() {
+      if (game.state !== "playing" || !input.buildMode || !input.buildPoint) return;
+      const point = input.buildPoint;
+      buildStructure(point.x, point.y);
+      // One confirmation is one attempt. Choose a new position to place again.
+      input.buildPoint = null;
+      updatePlacementUi();
+    }
+
+    function handleMovePadDown(event) {
+      if (game.state !== "playing" || input.movePointer !== null || event.button !== 0) return;
+      event.preventDefault();
+      rememberPointer(event);
+      unlockAudio();
+      input.movePointer = event.pointerId;
+      movePad.setPointerCapture(event.pointerId);
+      handleMovePadMove(event);
+    }
+
+    function handleMovePadMove(event) {
+      if (event.pointerId !== input.movePointer) return;
+      event.preventDefault();
+      const rect = movePad.getBoundingClientRect();
+      const radius = rect.width / 2 - 14;
+      let x = (event.clientX - rect.left - rect.width / 2) / radius;
+      let y = (event.clientY - rect.top - rect.height / 2) / radius;
+      const length = Math.hypot(x, y);
+      if (length < 0.14) { x = 0; y = 0; }
+      else if (length > 1) { x /= length; y /= length; }
+      input.moveX = x;
+      input.moveY = y;
+      movePad.style.setProperty("--move-x", x * radius + "px");
+      movePad.style.setProperty("--move-y", y * radius + "px");
+    }
+
+    function handleMovePadUp(event) {
+      if (event.pointerId !== input.movePointer) return;
+      const pointerId = input.movePointer;
+      input.movePointer = null;
+      input.moveX = 0;
+      input.moveY = 0;
+      releaseCapture(movePad, pointerId);
+      movePad.style.setProperty("--move-x", "0px");
+      movePad.style.setProperty("--move-y", "0px");
+    }
+
     function handlePointerMove(event) {
+      if (game.state !== "playing") return;
+      if (input.aimPointer !== null && event.pointerId !== input.aimPointer) return;
+      if (event.pointerType !== "mouse" && event.pointerId !== input.aimPointer) return;
       const rect = canvas.getBoundingClientRect();
-      mouse.x = event.clientX - rect.left;
-      mouse.y = event.clientY - rect.top;
-      mouse.hasMoved = true;
+      const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      if (input.buildMode) {
+        input.buildPoint = point;
+        updatePlacementUi();
+      } else {
+        mouse.x = point.x;
+        mouse.y = point.y;
+        mouse.hasMoved = true;
+      }
     }
 
     function handlePointerDown(event) {
+      if (game.state !== "playing" || input.aimPointer !== null) return;
+      rememberPointer(event);
       unlockAudio();
+      if (event.pointerType === "mouse" && (event.button === 2 || event.shiftKey)) {
+        handlePointerMove(event);
+        if (!input.buildMode) buildStructure(mouse.x, mouse.y);
+        return;
+      }
+      if (event.button !== 0) return;
+      event.preventDefault();
+      canvas.focus();
+      input.aimPointer = event.pointerId;
+      canvas.setPointerCapture(event.pointerId);
       handlePointerMove(event);
-
-      if (event.button === 2) {
-        buildStructure(mouse.x, mouse.y);
-        return;
-      }
-
-      if (event.shiftKey) {
-        buildStructure(mouse.x, mouse.y);
-        return;
-      }
-
-      if (game.state === "playing") {
-        mouse.isDown = true;
-      }
+      mouse.isDown = !input.buildMode;
     }
 
-    function handlePointerUp() {
+    function handlePointerUp(event) {
+      if (event.pointerId !== input.aimPointer) return;
+      const pointerId = input.aimPointer;
+      input.aimPointer = null;
       mouse.isDown = false;
+      if (event.type !== "pointerup") {
+        mouse.hasMoved = false;
+        input.buildPoint = null;
+        updatePlacementUi();
+      }
+      releaseCapture(canvas, pointerId);
     }
 
     function handleDoubleClick(event) {
-      handlePointerMove(event);
-      buildStructure(mouse.x, mouse.y);
+      // Ignore compatibility double-clicks synthesized after touch.
+      if (input.lastPointerType !== "mouse" || (event.pointerType && event.pointerType !== "mouse") || input.buildMode) return;
+      const rect = canvas.getBoundingClientRect();
+      buildStructure(event.clientX - rect.left, event.clientY - rect.top);
     }
 
     function handleKeyDown(event) {
-      unlockAudio();
       const key = event.key.toLowerCase();
-
-      if (key === "w" || key === "arrowup") {
-        keys.up = true;
-      }
-      if (key === "s" || key === "arrowdown") {
-        keys.down = true;
-      }
-      if (key === "a" || key === "arrowleft") {
-        keys.left = true;
-      }
-      if (key === "d" || key === "arrowright") {
-        keys.right = true;
-      }
-      if (key === " " || key === "enter") {
-        keys.shoot = true;
-      }
-      if (key === "shift") {
-        keys.dash = true;
-      }
-      if (key === "1") {
-        selectTool("turret");
-      }
-      if (key === "2") {
-        selectTool("wall");
-      }
-      if (key === "3") {
-        selectTool("mine");
-      }
-      if (key === "f") {
-        setAutoFire(!game.autoFire, true);
-      }
-      if (key === "p") {
-        togglePause();
-      }
-
-      if (game.state === "upgrade" && ["1", "2", "3"].includes(key)) {
-        const cardIndex = Number(key) - 1;
-        const card = upgradeGrid.children[cardIndex];
-
-        if (card) {
-          card.click();
+      const overlay = getActiveOverlay();
+      if (key === "tab" && overlay) {
+        const controls = Array.from(overlay.querySelectorAll("button:not([disabled]), input:not([disabled])"));
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus();
         }
+        return;
       }
-
-      if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
-        event.preventDefault();
+      if (key === "p" && !event.repeat) { togglePause(); return; }
+      if (game.state === "upgrade" && !event.repeat && ["1", "2", "3"].includes(key)) {
+        const card = upgradeGrid.children[Number(key) - 1];
+        if (card) card.click();
+        return;
       }
+      if (game.state !== "playing") return;
+      // Native Space/Enter activation of a focused control must not also fire.
+      if (["BUTTON", "INPUT"].includes(event.target.tagName) && [" ", "enter"].includes(key)) return;
+      unlockAudio();
+      if (key === "w" || key === "arrowup") keys.up = true;
+      if (key === "s" || key === "arrowdown") keys.down = true;
+      if (key === "a" || key === "arrowleft") keys.left = true;
+      if (key === "d" || key === "arrowright") keys.right = true;
+      if (key === " " || key === "enter") keys.shoot = true;
+      if (key === "shift") keys.dash = true;
+      if (key === "1") selectTool("turret");
+      if (key === "2") selectTool("wall");
+      if (key === "3") selectTool("mine");
+      if (key === "f" && !event.repeat) setAutoFire(!game.autoFire, true);
+      if (key === "escape" && input.buildMode) { resetInput(); canvas.focus(); }
+      if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) event.preventDefault();
     }
 
     function handleKeyUp(event) {
       const key = event.key.toLowerCase();
-
-      if (key === "w" || key === "arrowup") {
-        keys.up = false;
-      }
-      if (key === "s" || key === "arrowdown") {
-        keys.down = false;
-      }
-      if (key === "a" || key === "arrowleft") {
-        keys.left = false;
-      }
-      if (key === "d" || key === "arrowright") {
-        keys.right = false;
-      }
-      if (key === " " || key === "enter") {
-        keys.shoot = false;
-      }
-      if (key === "shift") {
-        keys.dash = false;
-      }
+      if (key === "w" || key === "arrowup") keys.up = false;
+      if (key === "s" || key === "arrowdown") keys.down = false;
+      if (key === "a" || key === "arrowleft") keys.left = false;
+      if (key === "d" || key === "arrowright") keys.right = false;
+      if (key === " " || key === "enter") keys.shoot = false;
+      if (key === "shift") keys.dash = false;
     }
 
-    function togglePause() {
-      if (game.state === "playing") {
-        game.state = "paused";
-        showToast("Paused. Press P to resume.");
-      } else if (game.state === "paused") {
-        game.state = "playing";
-        showToast("Resumed.");
+    function togglePause(reason) {
+      if (game.state !== "playing" && game.state !== "paused") return;
+      const paused = game.state === "playing";
+      game.state = paused ? "paused" : "playing";
+      resetInput();
+      pauseOverlay.classList.toggle("hidden", !paused);
+      syncGameState();
+      if (paused) {
+        document.getElementById("pauseReason").textContent = typeof reason === "string" ? reason : "Your mission is paused. Resume when you’re ready.";
+        document.getElementById("resumeButton").focus();
+      }
+      else canvas.focus();
+    }
+
+    function interruptGame(reason) {
+      if (game.state === "playing") togglePause(reason);
+      else {
+        resetInput();
+        if (game.state === "paused" && typeof reason === "string") {
+          document.getElementById("pauseReason").textContent = reason;
+        }
       }
     }
 
@@ -2771,7 +3067,33 @@
       canvas.addEventListener("pointermove", handlePointerMove);
       canvas.addEventListener("pointerdown", handlePointerDown);
       canvas.addEventListener("pointerup", handlePointerUp);
-      canvas.addEventListener("pointerleave", handlePointerUp);
+      canvas.addEventListener("pointercancel", handlePointerUp);
+      canvas.addEventListener("lostpointercapture", handlePointerUp);
+      movePad.addEventListener("pointerdown", handleMovePadDown);
+      movePad.addEventListener("pointermove", handleMovePadMove);
+      movePad.addEventListener("pointerup", handleMovePadUp);
+      movePad.addEventListener("pointercancel", handleMovePadUp);
+      movePad.addEventListener("lostpointercapture", handleMovePadUp);
+      window.addEventListener("blur", interruptGame);
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) interruptGame();
+      });
+      buildButton.addEventListener("click", toggleBuildMode);
+      placeButton.addEventListener("click", placeSelectedStructure);
+      document.getElementById("cancelBuildButton").addEventListener("click", function () {
+        resetInput(); canvas.focus();
+      });
+      dashButton.addEventListener("pointerdown", function (event) {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        if (game.state === "playing" && player.dashCooldown <= 0) input.dashRequested = true;
+      });
+      dashButton.addEventListener("click", function (event) {
+        // Keyboard/assistive activation has no pointerdown; pointer clicks already acted.
+        if (event.detail === 0 && game.state === "playing" && player.dashCooldown <= 0) input.dashRequested = true;
+      });
+      document.getElementById("pauseButton").addEventListener("click", togglePause);
+      document.getElementById("resumeButton").addEventListener("click", togglePause);
       canvas.addEventListener("dblclick", handleDoubleClick);
       canvas.addEventListener("contextmenu", function (event) {
         event.preventDefault();
@@ -2809,22 +3131,13 @@
         });
       }
 
-      document.getElementById("mobileTurret").addEventListener("click", function () {
-        selectTool("turret");
-      });
-
-      document.getElementById("mobileWall").addEventListener("click", function () {
-        selectTool("wall");
-      });
-
-      document.getElementById("mobileMine").addEventListener("click", function () {
-        selectTool("mine");
-      });
     }
 
     bindEvents();
     resizeCanvas();
     updateUi();
+    syncGameState();
+    document.getElementById("startButton").focus();
     requestAnimationFrame(gameLoop);
   </script>
 </body>

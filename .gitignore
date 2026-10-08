@@ -1,3 +1,6 @@
 .DS_Store
 Thumbs.db
 .playwright-mcp/
+node_modules/
+playwright-report/
+test-results/
