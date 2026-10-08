@@ -2,7 +2,7 @@ name: Touch controls validation
 
 on:
   push:
-    branches: [validation/touch-controls-20261008]
+    branches: [main, validation/touch-controls-20261008]
 
 permissions:
   contents: read
