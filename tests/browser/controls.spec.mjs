@@ -24,7 +24,12 @@ const test = base.extend({
   }, { auto: true }]
 });
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.title.startsWith('touch menu swipes')) {
+    // Native scroll gestures need the browser's live animation timeline.
+    await page.goto('/');
+    return;
+  }
   await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
   await page.goto('/');
   await page.clock.pauseAt(new Date('2026-01-01T00:01:00Z'));
@@ -231,16 +236,27 @@ test('touch menu swipes reach instructions and return to the title', async ({ pa
   test.skip(testInfo.project.name === 'desktop', 'Native touch scrolling case.');
   const client = await page.context().newCDPSession(page);
   const viewport = page.viewportSize();
-  const scroll = distance => client.send('Input.synthesizeScrollGesture', {
-    x: viewport.width / 2, y: viewport.height / 2, yDistance: distance,
-    speed: 1200, preventFling: true, gestureSourceType: 'touch'
-  });
+  const scroll = async distance => {
+    const before = await page.locator('#startOverlay .menu-card').evaluate(element => ({
+      scrollTop: element.scrollTop, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight
+    }));
+    await client.send('Input.synthesizeScrollGesture', {
+      x: viewport.width / 2, y: viewport.height / 2, yDistance: distance,
+      speed: 1200, preventFling: true, gestureSourceType: 'touch'
+    });
+    const after = await page.locator('#startOverlay .menu-card').evaluate(element => ({
+      scrollTop: element.scrollTop, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight
+    }));
+    await testInfo.attach(`scroll-${distance}`, {
+      body: JSON.stringify({ before, after }), contentType: 'application/json'
+    });
+  };
   const title = page.getByRole('heading', { name: 'Starforge Defender', exact: true });
   await scroll(1000);
   await expect(title).toBeInViewport({ ratio: 1 });
   await scroll(-1000);
   await expect(page.locator('#touchInstructions')).toBeInViewport({ ratio: 1 });
-  await screenshot(page, testInfo, 'touch-menu-scrolled');
+  await testInfo.attach('touch-menu-scrolled', { body: await page.screenshot(), contentType: 'image/png' });
   await scroll(1000);
   await expect(title).toBeInViewport({ ratio: 1 });
   await client.detach();
